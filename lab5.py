@@ -172,6 +172,24 @@ class Bug2():
 	# print dis
 	return dis
     
+    def rotation_distance(self):
+	"""Calculate the difference in yaw between two quaternions"""
+	(r1, p1, y1) = tf.transformations.euler_from_quaternion([self.odom.pose.pose.orientation.x,
+	                                                         self.odom.pose.pose.orientation.y,
+	                                                         self.odom.pose.pose.orientation.z,
+	                                                         self.odom.pose.pose.orientation.w])
+	(r2, p2, y2) = tf.transformations.euler_from_quaternion([self.starting_odom.pose.pose.orientation.x,
+	                                                         self.starting_odom.pose.pose.orientation.y,
+	                                                         self.starting_odom.pose.pose.orientation.z,
+	                                                         self.starting_odom.pose.pose.orientation.w])
+	# r, p, y now contain the roll, pitch and yaw from the two quaternions
+	# you can derive the angle from that in a number of ways
+	euler = abs(y2 - y1)
+	yaw_degrees = euler * 180.0 / math.pi
+	# yaw_degrees += 360.0 if (yaw_degrees < 0) else yaw_degrees
+	# print yaw_degrees
+	return yaw_degrees    
+    
     def drive_straight(self, speed, distance):
 	# Loop Rate
 	rate = rospy.Rate(50)
@@ -186,26 +204,32 @@ class Bug2():
 	    rospy.logwarn("You are moving backwards, cancelling")
 	ed = self.euclidean_distance();
 	dis_to_go = abs(self.euclidean_distance() - distance)
-	while (dis_to_go <= min_distance_to_your_goal) & (self.taskStatus != TaskStatus.REACH_OBSTACLE):
+	while (dis_to_go > min_distance_to_your_goal) & (self.taskStatus != TaskStatus.REACH_OBSTACLE):
 	    self.cmd_vel.publish(twist)
 	    dis_to_go = abs(self.euclidean_distance() - distance)
 	    rate.sleep()
 	# Stop robot
 	self.cmd_vel.publish(Twist())
-	
 	pass
     
     def rotate(self, angle):
-	self.twist_msg = Twist()
-	self.twist_msg.angular.z = 1 if angle > 0 else -1
-	# self.starting_odom = cm.deepcopy(self.odom)
+	twist = Twist()
+	twist.angular.z = 1 if angle > 0 else -1
 	self.status = RobotStatus.ROTATING
-	#self.starting_odom = self.odom()
-    
+	self.starting_odom = self.odom()
+	
 	angle = normalize_angle(angle)
 	print("Rotating %.4f degrees" % angle)
     
-	self.goal_rotation = abs(angle)
+	goal_rotation = abs(angle)
+	rd = abs(self.rotation_distance())
+	angle_to_go = abs(rd - goal_rotation)
+	while (angle_to_go > ROT_THRES) & (self.status != RobotStatus.STOPPED):
+	    self.cmd_vel.publish(twist)
+	    angle_to_go = abs(abs(self.rotation_distance()) - goal_rotation)
+	    
+	#Stop Robot
+	self.cmd_vel.publish(Twist())
     
     def stop_robot(self):
     
@@ -222,37 +246,6 @@ class Bug2():
 		self.stop_robot()
 		print ("Yay, we made it")
 	#elif self.taskStatus == TaskStatus.
-    
-    
-    def process_position(self):
-	"""
-	you can check the progress of your actions here
-	or in the individual function, it's up to you
-	"""
-	if self.status == RobotStatus.STRAIGHT:
-	    ed = self.euclidean_distance()
-	    to_go = abs(ed - self.goal_distance)
-	    rospy.logwarn("%.4f meters travelled %.4f meters to go" % (ed, to_go))
-	    if to_go < XY_THRES:
-		self.cancel_goals()
-	elif self.status == RobotStatus.ROTATING:
-	    rd = abs(self.rotation_distance())
-	    to_go = abs(rd - self.goal_rotation)
-	    rospy.logwarn("%.4f degrees rotated %.4f degrees to go" % (rd, abs(rd - self.goal_rotation)))
-	    if to_go < ROT_THRES:
-		self.cancel_goals()
-	elif self.status == RobotStatus.ARC:
-	    (trans, rot) = self.odom_listener.lookupTransform('odom', 'base_link', rospy.Time(0))
-	    transformer = tf.TransformerROS()
-	    state = transformer.fromTranslationRotation(trans, rot)
-	    state_rot = state[0:3, 0:3]
-	    x = abs((state_rot - self.goal_arc))
-	    print x
-	    x = x < QUAT_THRES
-	    if x.all():
-		self.cancel_goals()
-	else:
-	    self.cancel_goals()
     
 	
     def face_to_goal(self):
