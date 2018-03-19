@@ -55,7 +55,7 @@ class RobotStatus:
         pass
     
 class TaskStatus:
-    NOTASK, FINISH, FACING_GOAL, WALL_FOLLOWING, GOAL_SEEKING = range(5)
+    NOTASK, REACH_OBSTACLE, FACING_GOAL, WALL_FOLLOWING, GOAL_SEEKING = range(6)
     
     def __init__(self):
 	pass    
@@ -83,12 +83,16 @@ class Bug2():
         # things you might want to consider using
         self.bumper_pressed = -1
         self.goal_distance = -1
+	self.tmp_goal_distance = -1
+	self.tmp_goal_rotation = -1
 	self.goal_x = 0.0
 	self.goal_y = 0.0
 	#distance_to_goal = 0.0	
 	self.status = RobotStatus.STOPPED
 	self.taskStatus = TaskStatus.NOTASK
 	self.reached_goal = False
+	self.hit_point_x = 0.0
+	self.hit_pint_y = 0.0
 
         # reading the laser data
         self.scan = LaserScan()
@@ -111,8 +115,6 @@ class Bug2():
 	self.set_linear_goal(5.0,0.0)
         # you might want to define a temporary goal for when the bot face towards a wall
 	
-        
-	#drive_straight(.3 , .6)
 		
         self.face_to_goal()
         while (not rospy.is_shutdown() & (self.goal_distance > min_distance_to_your_goal) ):
@@ -128,7 +130,7 @@ class Bug2():
 		self.drive_straight(.3,self.goal_distance)
 		
 	    #Wall Following
-	    if(Reach_obstacle) & (self.taskStatus != TaskStatus.WALL_FOLLOWING):
+	    if(Reach_obstacle) & (self.taskStatus != TaskStatus.WALL_FOLLOWING):	
 		self.taskStatus = TaskStatus.WALL_FOLLOWING
 
 		#Following Wall, Change back to FACING_GOAL after done.
@@ -161,47 +163,97 @@ class Bug2():
 	# Import code from Lab4
     def euclidean_distance(self):
 	"""Calculate euclidean distance between two points"""
-	print (self.starting_odom.pose.pose.position.x)
-	print (self.starting_odom.pose.pose.position.y)
-	print (self.odom.pose.pose.position.x)
-	print (self.odom.pose.pose.position.y)
+	#print (self.starting_odom.pose.pose.position.x)
+	#print (self.starting_odom.pose.pose.position.y)
+	#print (self.odom.pose.pose.position.x)
+	#print (self.odom.pose.pose.position.y)
 	dis = np.sqrt(math.pow((self.starting_odom.pose.pose.position.x - self.odom.pose.pose.position.x), 2) +
 	                  math.pow((self.starting_odom.pose.pose.position.y - self.odom.pose.pose.position.y), 2))
 	# print dis
 	return dis
     
-    def drive_straight(self, speed, distance, time=.1):
-	print("Going straight for %.2f meters at %.2f m/s" % (distance, speed))
-	# self.starting_odom = cm.deepcopy(self.odom)
+    def drive_straight(self, speed, distance):
+	# Loop Rate
+	rate = rospy.Rate(50)
+	
 	self.starting_odom = self.odom()
-	self.goal_distance = distance
-	self.twist_msg = Twist()
+	self.status = RobotStatus.STRAIGHT
+	twist = Twist()
 	if speed >= 0:
-	    self.twist_msg.linear.x = MAX_LIN_VEL if speed > MAX_LIN_VEL else speed
+	    twist.linear.x = MAX_LIN_VEL if speed > MAX_LIN_VEL else speed
 	else:
 	    # linvel = -MAX_LIN_VEL if speed < -MAX_LIN_VEL else speed
 	    rospy.logwarn("You are moving backwards, cancelling")
+	ed = self.euclidean_distance();
+	dis_to_go = abs(self.euclidean_distance() - distance)
+	while (dis_to_go <= min_distance_to_your_goal) & (self.taskStatus != TaskStatus.REACH_OBSTACLE):
+	    self.cmd_vel.publish(twist)
+	    dis_to_go = abs(self.euclidean_distance() - distance)
+	    rate.sleep()
+	# Stop robot
+	self.cmd_vel.publish(Twist())
+	
 	pass
     
     def rotate(self, angle):
 	self.twist_msg = Twist()
 	self.twist_msg.angular.z = 1 if angle > 0 else -1
 	# self.starting_odom = cm.deepcopy(self.odom)
-	self.starting_odom = self.odom()
+	self.status = RobotStatus.ROTATING
+	#self.starting_odom = self.odom()
     
 	angle = normalize_angle(angle)
 	print("Rotating %.4f degrees" % angle)
     
 	self.goal_rotation = abs(angle)
     
-    def cancel_goals(self):
+    def stop_robot(self):
     
-	rospy.logerr("Cancelling All Movement")
-	self.goal_rotation = -1
-	self.goal_distance = -1
+	rospy.logerr("Stoping Robot")
 	self.twist_msg = Twist()
-	# self.command_list = []
+	self.status = RobotStatus.STOPPED
 	
+	    
+    def check_process(self):
+	if self.taskStatus == TaskStatus.GOAL_SEEKING:
+	    self.goal_distance = self.distance(self.goal_x,self.goal_y)
+	    #rospy.logwarn("%.4f meters to go " % (self.goal_distance))
+	    if self.goal_distance <= min_distance_to_your_goal:
+		self.stop_robot()
+		print ("Yay, we made it")
+	#elif self.taskStatus == TaskStatus.
+    
+    
+    def process_position(self):
+	"""
+	you can check the progress of your actions here
+	or in the individual function, it's up to you
+	"""
+	if self.status == RobotStatus.STRAIGHT:
+	    ed = self.euclidean_distance()
+	    to_go = abs(ed - self.goal_distance)
+	    rospy.logwarn("%.4f meters travelled %.4f meters to go" % (ed, to_go))
+	    if to_go < XY_THRES:
+		self.cancel_goals()
+	elif self.status == RobotStatus.ROTATING:
+	    rd = abs(self.rotation_distance())
+	    to_go = abs(rd - self.goal_rotation)
+	    rospy.logwarn("%.4f degrees rotated %.4f degrees to go" % (rd, abs(rd - self.goal_rotation)))
+	    if to_go < ROT_THRES:
+		self.cancel_goals()
+	elif self.status == RobotStatus.ARC:
+	    (trans, rot) = self.odom_listener.lookupTransform('odom', 'base_link', rospy.Time(0))
+	    transformer = tf.TransformerROS()
+	    state = transformer.fromTranslationRotation(trans, rot)
+	    state_rot = state[0:3, 0:3]
+	    x = abs((state_rot - self.goal_arc))
+	    print x
+	    x = x < QUAT_THRES
+	    if x.all():
+		self.cancel_goals()
+	else:
+	    self.cancel_goals()
+    
 	
     def face_to_goal(self):
         # turn the robot until it faces towards the goal
@@ -223,7 +275,9 @@ class Bug2():
     def go_to_goal(self, x_goal, y_goal, end_time):
         # make it move towards the goal
         # don't forget to use sleep function to sync your while loop with the frequency of other nodes
-
+	
+	drive_straight(0.3)
+	"""
         # maybe it's not a bad idea to publish an empty twist message to reset everything at the end of this function
         self.cmd_vel.publish(Twist())
 
@@ -235,6 +289,7 @@ class Bug2():
             # an error happened
             print ("go to goal has failed")
             return False
+	"""
 
     def distance(self, x_goal, y_goal):
         return sqrt(((self.x - x_goal)**2)+((self.y - y_goal)**2))
@@ -252,6 +307,10 @@ class Bug2():
 
     def odom_callback(self, odom_msg):
         # try to save x, y, and theta in your instance variables, for your own convience.
+	self.x = odom_msg.pose.pose.position.x
+	self.y = odom_msg.pose.pose.position.y
+	self.theta = odom_msg.pose.pose.position.z
+	self.odom = odom_msg
 	return 0
 
     def bug_angle():
@@ -264,4 +323,3 @@ if __name__ == '__main__':
     except rospy.ROSInterruptException:
         pass
 
-    
