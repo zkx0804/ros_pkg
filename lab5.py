@@ -112,11 +112,17 @@ class Bug2():
         print ("Waiting, the node is initializing...")
         
         # set the goal
-	self.set_linear_goal(5.0,0.0)
+	#self.set_linear_goal(5.0,0.0)
         # you might want to define a temporary goal for when the bot face towards a wall
 	
 		
-        self.face_to_goal()
+        #self.face_to_goal()
+	
+	self.drive_straight(0.2,0.5)
+	rospy.sleep(1)
+	self.rotate(-45)
+	
+	"""
         while (not rospy.is_shutdown() & (self.goal_distance > min_distance_to_your_goal) ):
             # implement bug2 algorithm
 
@@ -143,9 +149,9 @@ class Bug2():
 	    
 	    
 	    
-	    self.cmd_vel.publish(self.twist_msg)
-	    rate.sleep()
-	    
+	    #self.cmd_vel.publish(self.twist_msg)
+	    #rate.sleep()
+	"""
 	
 	rospy.loginfo("Stopping Turtlebot")
 	self.cmd_vel.publish(Twist())
@@ -209,8 +215,7 @@ class Bug2():
 	    dis_to_go = abs(self.euclidean_distance() - distance)
 	    rate.sleep()
 	# Stop robot
-	self.cmd_vel.publish(Twist())
-	pass
+	self.stop_robot()
     
     def rotate(self, angle):
 	twist = Twist()
@@ -229,10 +234,9 @@ class Bug2():
 	    angle_to_go = abs(abs(self.rotation_distance()) - goal_rotation)
 	    
 	#Stop Robot
-	self.cmd_vel.publish(Twist())
+	self.stop_robot()
     
     def stop_robot(self):
-    
 	rospy.logerr("Stoping Robot")
 	self.twist_msg = Twist()
 	self.status = RobotStatus.STOPPED
@@ -269,7 +273,6 @@ class Bug2():
         # make it move towards the goal
         # don't forget to use sleep function to sync your while loop with the frequency of other nodes
 	
-	drive_straight(0.3)
 	"""
         # maybe it's not a bad idea to publish an empty twist message to reset everything at the end of this function
         self.cmd_vel.publish(Twist())
@@ -304,7 +307,6 @@ class Bug2():
 	self.y = odom_msg.pose.pose.position.y
 	self.theta = odom_msg.pose.pose.position.z
 	self.odom = odom_msg
-	return 0
 
     def bug_angle():
         return atan2(goal.pose.pose.position.y - poser.pose.pose.position.y, goal.pose.pose.position.x- poser.pose.pose.position.x)
