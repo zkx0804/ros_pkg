@@ -78,7 +78,6 @@ class Bug2():
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0
-        self.straight_distance = 0.0
 
         # things you might want to consider using
         self.bumper_pressed = -1
@@ -105,7 +104,7 @@ class Bug2():
         self.cmd_vel = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=10)
 
         # loop rate
-        rate = rospy.Rate(50)
+        rate = rospy.Rate(50) # HZ
         start_time = rospy.Time.now()
         
         # wait until specific amount of time, until your messeges start to be received by your node
@@ -197,23 +196,17 @@ class Bug2():
 	return yaw_degrees    
     
     def drive_straight(self, speed, distance):
-	# Loop Rate
-	rate = rospy.Rate(50)
 	
-	self.starting_odom = self.odom()
+	self.starting_odom = self.odom
 	self.status = RobotStatus.STRAIGHT
 	twist = Twist()
-	if speed >= 0:
-	    twist.linear.x = MAX_LIN_VEL if speed > MAX_LIN_VEL else speed
-	else:
-	    # linvel = -MAX_LIN_VEL if speed < -MAX_LIN_VEL else speed
-	    rospy.logwarn("You are moving backwards, cancelling")
+	twist.linear.x = MAX_LIN_VEL if speed > MAX_LIN_VEL else speed
+	
 	ed = self.euclidean_distance();
 	dis_to_go = abs(self.euclidean_distance() - distance)
 	while (dis_to_go > min_distance_to_your_goal) & (self.taskStatus != TaskStatus.REACH_OBSTACLE):
 	    self.cmd_vel.publish(twist)
 	    dis_to_go = abs(self.euclidean_distance() - distance)
-	    rate.sleep()
 	# Stop robot
 	self.stop_robot()
     
@@ -221,23 +214,24 @@ class Bug2():
 	twist = Twist()
 	twist.angular.z = 1 if angle > 0 else -1
 	self.status = RobotStatus.ROTATING
-	self.starting_odom = self.odom()
+	self.starting_odom = self.odom
 	
 	angle = normalize_angle(angle)
 	print("Rotating %.4f degrees" % angle)
-    
+	print (self.starting_odom.pose.pose.orientation.w)
+	
 	goal_rotation = abs(angle)
 	rd = abs(self.rotation_distance())
 	angle_to_go = abs(rd - goal_rotation)
 	while (angle_to_go > ROT_THRES) & (self.status != RobotStatus.STOPPED):
 	    self.cmd_vel.publish(twist)
 	    angle_to_go = abs(abs(self.rotation_distance()) - goal_rotation)
-	    
+	print (self.odom.pose.pose.orientation.w)
 	#Stop Robot
 	self.stop_robot()
     
     def stop_robot(self):
-	rospy.logerr("Stoping Robot")
+	rospy.loginfo("Stoping Robot")
 	self.twist_msg = Twist()
 	self.status = RobotStatus.STOPPED
 	
@@ -267,11 +261,20 @@ class Bug2():
 	self.goal_y = y_goal
 	self.goal_distance = self.distance(x_goal,y_goal)
 	
-	return 0
-
+	
     def go_to_goal(self, x_goal, y_goal, end_time):
         # make it move towards the goal
         # don't forget to use sleep function to sync your while loop with the frequency of other nodes
+	rospy.loginfo("Heading to Goal.")
+	self.taskStatus = TaskStatus.GOAL_SEEKING
+	distance_to_goal = self.distance(x_goal,y_goal)
+	
+	if (self.y <= y_goal + min_distance_to_your_goal) & (self.y >= y_goal - min_distance_to_your_goal): 
+	    if (distance_to_goal > min_distance_to_your_goal):
+		self.drive_straight(0.2, distance_to_goal)
+	else:
+	    rospy.logwarn("Robot hav")
+    
 	
 	"""
         # maybe it's not a bad idea to publish an empty twist message to reset everything at the end of this function
@@ -305,7 +308,7 @@ class Bug2():
         # try to save x, y, and theta in your instance variables, for your own convience.
 	self.x = odom_msg.pose.pose.position.x
 	self.y = odom_msg.pose.pose.position.y
-	self.theta = odom_msg.pose.pose.position.z
+	#self.theta = odom_msg.pose.pose.position.z
 	self.odom = odom_msg
 
     def bug_angle():
