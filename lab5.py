@@ -221,11 +221,11 @@ class Bug2():
 	print (self.starting_odom.pose.pose.orientation.w)
 	
 	goal_rotation = abs(angle)
-	rd = abs(self.rotation_distance())
+	rd = self.rotation_distance()
 	angle_to_go = abs(rd - goal_rotation)
 	while (angle_to_go > ROT_THRES) & (self.status != RobotStatus.STOPPED):
 	    self.cmd_vel.publish(twist)
-	    angle_to_go = abs(abs(self.rotation_distance()) - goal_rotation)
+	    angle_to_go = abs(self.rotation_distance() - goal_rotation)
 	print (self.odom.pose.pose.orientation.w)
 	#Stop Robot
 	self.stop_robot()
