@@ -1,4 +1,5 @@
 import math
+from math import *
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -6,6 +7,14 @@ import matplotlib.colors as colors
 
 
 grid_size = 100
+
+class Position:
+    """ Helper class that describes the positon of the turtlebot:
+            x,y and theta 
+    """
+    x = 0.0
+    y = 0.0
+    theta = 0.0
 
 class Test():
     
@@ -105,6 +114,8 @@ class Test():
         #print(equiv)
         
         frontier = self.getFrontier()
+        
+        self.pickBestCentroid(frontier)
         f1 = frontier[0]
         f1_xs = []
         f1_ys = []        
@@ -163,7 +174,7 @@ class Test():
         
         matplotlib.rcParams['axes.unicode_minus'] = False
         fig, ax = plt.subplots()
-        ax.plot(unknown_xs, unknown_ys, "co", o_xs, o_ys, "ko", free_xs,free_ys, "c,", f1_xs, f1_ys, "ro", f2_xs, f2_ys, "yo", f3_xs, f3_ys, "go", f4_xs, f4_ys, "bo")
+        ax.plot([self.x],[self.y], "r*",unknown_xs, unknown_ys, "co", o_xs, o_ys, "ko", free_xs,free_ys, "c,", f1_xs, f1_ys, "ro", f2_xs, f2_ys, "yo", f3_xs, f3_ys, "go", f4_xs, f4_ys, "bo", self.centroidX,self.centroidY, "m*")
         ax.set_title('Testing')
         plt.show()           
         
@@ -402,6 +413,78 @@ class Test():
                 near_frontier.append(self.xy2mapIndex(x + 1, y - 1))
         return near_frontier
     
+    def calc_centroid(self, points):
+        """ This function takes in a set of points and finds its centroid.
+            
+            Input:
+                points - 2D array where the each row contains the X,Y location 
+                    of the frontier cell
+        """
+        
+    
+    def pickBestCentroid(self, frontiers):
+        """ Takes in all frontiers (as a 3D array) and choses the best frontier"""
+        self.centroidX = []
+        self.centroidY = []
+        self.centroidIndex = []
+        self.cost = []
+        
+        centroid_index = 0
+        
+        for i in range(len(frontiers)):
+            index_list = frontiers[i]
+            point_x = []
+            point_y = []
+            for j in range(len(index_list)):
+                index = index_list[j]
+                x,y = self.mapIndex2xy(index)
+                point_x.append(x)
+                point_y.append(y)
+            
+            c_x = ceil(sum(point_x) / len(point_x))
+            c_y = ceil(sum(point_y) / len(point_y))
+            
+            cost = self.calcCost_dist(c_x,c_y)
+            
+            self.centroidX.append(c_x)
+            self.centroidY.append(c_y)
+            self.centroidIndex.append(i)
+            self.cost.append(cost)
+            print("Found centroid at (%s, %s), cost: %s" % (c_x, c_y, cost))
+        
+        return self.bestCentroid()
+            
+    def updateBestCentoid(self):
+        """ """
+        pass
+
+        
+    def bestCentroid(self):
+        """ This function takes the precalculated x/y and cost values of the 
+            centroid and picks the returns the index to the cell that has the minimum cost"""
+        pass
+     
+    # Distance on grid? or real world?
+    def distanceFomula(self, x1,y1, x2,y2):
+        return sqrt(((x1 - x2)**2)+((y1 - y2)**2))
+        
+
+         
+    def calcCost(self, centroidX, centroidY, frontierLength):
+        """ Calculate the cost of the frontier's centroid using a combo of
+            the distance to the centroid and the length of the centroid.
+        """
+        pass
+
+        
+    def calcCost_dist(self, X, Y):
+        """ Calculate the cost of the frontier's centroid using just the
+            distance to the centroid. 
+        """ 
+        return sqrt(((self.x - X)**2)+((self.y - Y)**2))
+    
+    
+    
     def testChart(self):
         size = 100
         xs = []
@@ -439,7 +522,10 @@ class Test():
     def __init__(self):
         self.ogrid_sizeX = grid_size
         self.ogrid_sizeY = grid_size
+        self.x = 10
+        self.y = 50
         self.frontier = [] # index
+        self.frontierCentroid = Position()       
         self.fake_map_data = [0]*grid_size*grid_size # row-major order
         #self.testChart()
         self.labelFunc()
