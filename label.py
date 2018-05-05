@@ -462,7 +462,15 @@ class Test():
     def bestCentroid(self):
         """ This function takes the precalculated x/y and cost values of the 
             centroid and picks the returns the index to the cell that has the minimum cost"""
-        pass
+        min_cost = min(self.cost)
+        c_index = self.cost.index(min_cost)
+        
+        c_x = self.centroidX[c_index]
+        c_y = self.centroidY[c_index]
+        
+        map_index = self.xy2mapIndex(c_x,c_y)
+        
+        return map_index
      
     # Distance on grid? or real world?
     def distanceFomula(self, x1,y1, x2,y2):
