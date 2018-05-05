@@ -92,17 +92,18 @@ class Frontier_Based_Exploration():
         return sqrt(((x1 - x2)**2)+((y1 - y2)**2))
         
 
-         
+    # Not in use
     def calcCost(self, centroidX, centroidY, frontierLength):
         """ Calculate the cost of the frontier's centroid using a combo of
             the distance to the centroid and the length of the centroid.
         """
-
+        pass
         
     def calcCost_dist(self, X, Y):
         """ Calculate the cost of the frontier's centroid using just the
             distance to the centroid. 
-        """
+        """ 
+        return sqrt(((self.x - X)**2)+((self.y - Y)**2))
         
     def onFrontier(self, index):
         """ This function takes in an index of a cell in the map and determines
@@ -139,8 +140,6 @@ class Frontier_Based_Exploration():
                 return True
             elif self.current_map.data[bc] > 90:
                 return connected            
-        
-
 
         # Check the cell to the left to see if its connected to a  
         #   known cell
@@ -159,8 +158,7 @@ class Frontier_Based_Exploration():
             if self.current_map.data[tl] == -1:
                 return True
             elif self.current_map.data[tl] > 90:
-                return connected            
-        
+                return connected               
 
         # Check bottom left
         # x - 1, y - 1
@@ -336,7 +334,7 @@ class Frontier_Based_Exploration():
                 near_frontier.append(self.xy2mapIndex(x + 1, y - 1))
         return near_frontier
 
-        
+    # Not in use
     def calc_centroid(self, points):
         """ This function takes in a set of points and finds its centroid.
             
@@ -344,6 +342,7 @@ class Frontier_Based_Exploration():
                 points - 2D array where the each row contains the X,Y location 
                     of the frontier cell
         """
+        pass
         
     
     def pickBestCentroid(self, frontiers):
@@ -354,18 +353,66 @@ class Frontier_Based_Exploration():
         self.cost = []
         
         centroid_index = 0
-        ...
+        
+        for i in range(len(frontiers)):
+            index_list = frontiers[i]
+            point_x = []
+            point_y = []
+            for j in range(len(index_list)):
+                index = index_list[j]
+                x,y = self.mapIndex2xy(index)
+                point_x.append(x)
+                point_y.append(y)
                 
+                # Create marker on rviz for each frontier
+                
+            
+            c_x = ceil(sum(point_x) / len(point_x))
+            c_y = ceil(sum(point_y) / len(point_y))
+            
+            cost = self.calcCost_dist(c_x,c_y)
+            
+            self.centroidX.append(c_x)
+            self.centroidY.append(c_y)
+            self.centroidIndex.append(i)
+            self.cost.append(cost)
+            print("Found centroid at (%s, %s), cost: %s" % (c_x, c_y, cost))
+        
         return self.bestCentroid()
             
-    def updateBestCentoid(self):
+    def updateBestCentroid(self):
         """ """
+        # Get frontier
+        
+        frontier = self.getFrontier()
+        # Find best centroid index
+        
+        
+        best_centorid_index = self.pickBestCentroid(frontier)
+        
+        # Find best centroid index
+        x ,y = self.mapIndex2xy(best_centorid_index)
+        
+        if self.frontierCentroid.x == x and self.frontierCentroid == y:
+            print("Failed to update best centroid")
+        else:
+            self.frontierCentroid.x, self.frontierCentroid.y = x,y
+            print("Found best centroid at (%s, %s)" & (self.frontierCentroid.x, self.frontierCentroid.y))
 
         
     def bestCentroid(self):
         """ This function takes the precalculated x/y and cost values of the 
             centroid and picks the returns the index to the cell that has the minimum cost"""
-            
+        min_cost = min(self.cost)
+        c_index = self.cost.index(min_cost)
+        
+        c_x = self.centroidX[c_index]
+        c_y = self.centroidY[c_index]
+        
+        map_index = self.xy2mapIndex(c_x,c_y)
+        
+        #print("Found best centroid at (%s, %s)" % (c_x, c_y))
+        return map_index       
         
         
     def makeMarker(self, centroidX, centroidY, ID, action = Marker.ADD,  new=True):

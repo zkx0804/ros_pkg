@@ -440,6 +440,9 @@ class Test():
                 x,y = self.mapIndex2xy(index)
                 point_x.append(x)
                 point_y.append(y)
+                
+                # Create marker on rviz for each frontier
+                
             
             c_x = ceil(sum(point_x) / len(point_x))
             c_y = ceil(sum(point_y) / len(point_y))
@@ -454,9 +457,22 @@ class Test():
         
         return self.bestCentroid()
             
-    def updateBestCentoid(self):
+    def updateBestCentroid(self):
         """ """
-        pass
+        # Get frontier
+        
+        frontier = self.getFrontier()
+        # Find best centroid index
+        
+        
+        best_centorid_index = self.pickBestCentroid(frontier)
+        
+        # Find best centroid index
+        
+        
+        self.frontierCentroid.x, self.frontierCentroid.y = self.mapIndex2xy(best_centorid_index)
+        print("Found best centroid at (%s, %s)" & (self.frontierCentroid.x, self.frontierCentroid.y))
+        
 
         
     def bestCentroid(self):
@@ -470,6 +486,7 @@ class Test():
         
         map_index = self.xy2mapIndex(c_x,c_y)
         
+        #print("Found best centroid at (%s, %s)" % (c_x, c_y))
         return map_index
      
     # Distance on grid? or real world?
