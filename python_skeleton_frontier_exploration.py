@@ -417,16 +417,59 @@ class Frontier_Based_Exploration():
         
     def makeMarker(self, centroidX, centroidY, ID, action = Marker.ADD,  new=True):
         """ Creates a marker on RVIZ for the centroid of the frontier"""
+       
+        c_marker = Marker(
+            type=Marker.POINTS,
+                        id=ID,
+                        ns = "Centroid Point",
+                        action = action,
+                        pose=Pose(Point(centroidX, centroidY, 0)),
+                        scale.x = 0.2,
+                        scale.y = 0.2,
+                        header=Header(frame_id='base_link',stamp = rospy.Time.now()),
+                        color=ColorRGBA(0.0, 1.0, 0.0, 0.8)
+        )        
+        if new:
+            self.markerArray.append(c_marker)
+        
+        pass
         
 
             
     def makelineMarker(self, XY, ID, action = Marker.ADD, new=True):
         """ Creates a line marker on RVIZ for the entire frontier"""
+        
+        l_marker = Marker(
+            type=Marker.LINE_STRIP,
+                        id=ID,
+                        ns = "Frontier",
+                        action = action,
+                        scale.x = 0.2,
+                        scale.y = 0.2,
+                        header=Header(frame_id='base_link',stamp = rospy.Time.now()),
+                        color=ColorRGBA(0.0, 1.0, 0.0, 0.8)
+        )
+        points = []
+        for i in range(XY):
+            x = XY[i][0]
+            y = XY[i][1]
+            p = Point(x,y,0)
+            points.append(p)
+        l_marker.points = points
+        
+        if new:
+            self.lineMarker.append(l_marker)
+
 
             
     def removeAllMarkers(self):
         """This function removes all markers from rviz"""
-
+        pass
+    
+    def publishAllMarkers(self):
+        self.marker_pub.publish(self.markerArray)
+        self.lineMarker_pub.publish(self.lineMarker)
+        pass
         
     def pose_callback(self, pose_msg):
         """ callback to handle odometry messages"""        
@@ -470,6 +513,7 @@ class Frontier_Based_Exploration():
 
     def move2frontier(self,X, Y):
         """ Navigate to the centroid of the chosen frontier"""
+        pass
                 
     def run(self):
         """ Runs the frontier based exploration. """
